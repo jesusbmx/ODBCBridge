@@ -70,4 +70,17 @@
     nbproject/build-impl.xml file. 
 
     -->
+    
+    <!-- Copia los archivos DLLs al la carpeta dist despues de crear el JAR -->
+    <target name="-post-jar">
+        <!-- Define source and destination directories -->
+        <copy todir="${dist.dir}">
+            <!-- Include DLL files 
+            <fileset dir="." includes="**/*.dll"/>
+            -->
+            <!-- Include DLL files only from the root directory -->
+        <fileset dir="." includes="*.dll"/>
+        </copy>
+    </target>
+    
 </project>
