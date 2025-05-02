@@ -1,3 +1,4 @@
+// ODBCBridge.java
 package odbcbridge;
 
 import java.util.LinkedHashMap;
@@ -102,6 +103,7 @@ public class ODBCBridge {
     public native void close(long connectionPtr) throws Exception;
     public native String[] listDatabases() throws Exception;
     public native String[] listTables(long connectionPtr) throws Exception;
+    public native ODBCField[] listColumns(long connectionPtr, String tableName) throws Exception;
     public native long query(long connectionPtr, String sql) throws Exception;
     public native String[] fetchFields(long queryPtr) throws Exception;
     public native String[] fetchArray(long queryPtr) throws Exception;

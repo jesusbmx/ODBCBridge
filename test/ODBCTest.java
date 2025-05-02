@@ -1,6 +1,7 @@
 
 import java.util.Map;
 import odbcbridge.ODBCBridge;
+import odbcbridge.ODBCField;
 
 public class ODBCTest {
     
@@ -20,6 +21,12 @@ public class ODBCTest {
             String[] tables = bridge.listTables(link);
             for (String table : tables) {
                 System.out.println("Table: " + table);
+            }
+            
+            System.out.println("-- Fields --");
+            ODBCField[] columns = bridge.listColumns(link, "Product");
+            for (ODBCField column : columns) {
+                System.out.println("Column: " + column);
             }
             
             System.out.println("-- Query --");

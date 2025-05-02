@@ -1,4 +1,4 @@
-
+// ODBCBridge.c
 #include "ODBCBridge.h"
 #include <windows.h>
 #include <sql.h>
@@ -185,6 +185,57 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_listTables(
 
     SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
 
+    return result;
+}
+
+// Funcion par alistar los comapos de una tabla
+JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_listColumns(
+    JNIEnv *env, jobject obj, jlong connectionPtr, jstring jtableName
+) {
+    ConnectionState *connectionState = (ConnectionState *)(intptr_t)connectionPtr;
+    const char *tableName = (*env)->GetStringUTFChars(env, jtableName, 0);
+
+    SQLHSTMT hStmt = init_statement(env, connectionState->hDbc);
+    SQLRETURN ret = SQLColumns(hStmt, NULL, 0, NULL, 0, (SQLCHAR *)tableName, SQL_NTS, NULL, 0);
+    check_error(env, ret, SQL_HANDLE_STMT, hStmt, "Failed to retrieve columns");
+
+    // Contar número de columnas
+    int rowCount = 0;
+    while ((ret = SQLFetch(hStmt)) != SQL_NO_DATA) {
+        rowCount++;
+    }
+
+    // Preparar clase Java: odbcbridge.ODBCField
+    jclass clsODBCField = (*env)->FindClass(env, "odbcbridge/ODBCField");
+    if (clsODBCField == NULL) return NULL;
+
+    jmethodID constructor = (*env)->GetMethodID(env, clsODBCField, "<init>", "(Ljava/lang/String;II)V");
+    if (constructor == NULL) return NULL;
+
+    jobjectArray result = (*env)->NewObjectArray(env, rowCount, clsODBCField, NULL);
+
+    // Reiniciar cursor para leer de nuevo
+    SQLCloseCursor(hStmt);
+    SQLColumns(hStmt, NULL, 0, NULL, 0, (SQLCHAR *)tableName, SQL_NTS, NULL, 0);
+
+    SQLCHAR colName[256];
+    SQLSMALLINT dataType;
+    SQLINTEGER colSize;
+    SQLLEN indName, indType, indSize;
+
+    int i = 0;
+    while ((ret = SQLFetch(hStmt)) != SQL_NO_DATA) {
+        SQLGetData(hStmt, 4, SQL_C_CHAR, colName, sizeof(colName), &indName);   // COLUMN_NAME
+        SQLGetData(hStmt, 5, SQL_C_SSHORT, &dataType, 0, &indType);             // DATA_TYPE
+        SQLGetData(hStmt, 7, SQL_C_SLONG, &colSize, 0, &indSize);               // COLUMN_SIZE
+
+        jstring jname = (*env)->NewStringUTF(env, (char *)colName);
+        jobject field = (*env)->NewObject(env, clsODBCField, constructor, jname, dataType, colSize);
+        (*env)->SetObjectArrayElement(env, result, i++, field);
+    }
+
+    SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+    (*env)->ReleaseStringUTFChars(env, jtableName, tableName);
     return result;
 }
 
