@@ -48,6 +48,12 @@ public class Example {
                 System.out.println("Table: " + table);
             }
 
+            System.out.println("-- Fields --");
+            ODBCField[] columns = bridge.listColumns(link, "Product");
+            for (ODBCField column : columns) {
+                System.out.println("Column: " + column);
+            }
+
             System.out.println("-- Query --");
             final String sql = "SELECT * FROM \"Product\" LIMIT 100";
             final long result = bridge.query(link, sql);
