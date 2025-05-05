@@ -42,6 +42,10 @@ public class Example {
         final String dsn = "PostgreSQL30";
         final long link = bridge.connect(dsn);
         try {
+            System.out.println("-- Info --");
+            ODBCInfo info = bridge.getDatabaseInfo(link);
+            System.out.println(info);
+
             System.out.println("-- Tables --");
             String[] tables = bridge.listTables(link);
             for (String table : tables) {

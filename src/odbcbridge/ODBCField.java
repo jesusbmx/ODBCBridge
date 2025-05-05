@@ -44,7 +44,8 @@ public class ODBCField {
      * @return Nombre legible del tipo SQL
      */
     public static String getTypeName(int code) {
-        return TYPES.getOrDefault(code, "UNKNOWN(" + code + ")");
+        final String typeName = TYPES.get(code);
+        return typeName == null ? ("UNKNOWN(" + code + ")") : typeName; 
     }
     
     public final String name;

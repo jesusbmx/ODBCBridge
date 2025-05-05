@@ -112,6 +112,36 @@ JNIEXPORT void JNICALL Java_odbcbridge_ODBCBridge_close(
     }
 }
 
+// Optiene la información de la base de datos.
+JNIEXPORT jobject JNICALL Java_odbcbridge_ODBCBridge_getDatabaseInfo(
+    JNIEnv *env, jobject obj, jlong connectionPtr
+) {
+    ConnectionState *conn = (ConnectionState *)(intptr_t)connectionPtr;
+
+    SQLCHAR dbmsName[256], dbmsVer[256], drvName[256], drvVer[256], srvName[256], userName[256];
+
+    SQLGetInfo(conn->hDbc, SQL_DBMS_NAME, dbmsName, sizeof(dbmsName), NULL);
+    SQLGetInfo(conn->hDbc, SQL_DBMS_VER, dbmsVer, sizeof(dbmsVer), NULL);
+    SQLGetInfo(conn->hDbc, SQL_DRIVER_NAME, drvName, sizeof(drvName), NULL);
+    SQLGetInfo(conn->hDbc, SQL_DRIVER_VER, drvVer, sizeof(drvVer), NULL);
+    SQLGetInfo(conn->hDbc, SQL_SERVER_NAME, srvName, sizeof(srvName), NULL);
+    SQLGetInfo(conn->hDbc, SQL_USER_NAME, userName, sizeof(userName), NULL);
+
+    jclass cls = (*env)->FindClass(env, "odbcbridge/ODBCInfo");
+    jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>",
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+
+    jstring jdbmsName = (*env)->NewStringUTF(env, (char *)dbmsName);
+    jstring jdbmsVer  = (*env)->NewStringUTF(env, (char *)dbmsVer);
+    jstring jdrvName  = (*env)->NewStringUTF(env, (char *)drvName);
+    jstring jdrvVer   = (*env)->NewStringUTF(env, (char *)drvVer);
+    jstring jsrvName  = (*env)->NewStringUTF(env, (char *)srvName);
+    jstring juser     = (*env)->NewStringUTF(env, (char *)userName);
+
+    return (*env)->NewObject(env, cls, constructor,
+        jdbmsName, jdbmsVer, jdrvName, jdrvVer, jsrvName, juser);
+}
+
 // Función para listar bases de datos
 JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_listDatabases
   (JNIEnv *env, jobject obj) {

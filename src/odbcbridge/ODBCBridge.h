@@ -26,6 +26,14 @@ JNIEXPORT void JNICALL Java_odbcbridge_ODBCBridge_close
 
 /*
  * Class:     odbcbridge_ODBCBridge
+ * Method:    getDatabaseInfo
+ * Signature: (J)V
+ */
+JNIEXPORT jobject JNICALL Java_odbcbridge_ODBCBridge_getDatabaseInfo
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     odbcbridge_ODBCBridge
  * Method:    listDatabases
  * Signature: ()[Ljava/lang/String;
  */

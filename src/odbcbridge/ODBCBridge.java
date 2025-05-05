@@ -101,6 +101,7 @@ public class ODBCBridge {
     // Métodos nativos
     public native long connect(String dsn) throws Exception;
     public native void close(long connectionPtr) throws Exception;
+    public native ODBCInfo getDatabaseInfo(long connectionPtr) throws Exception;
     public native String[] listDatabases() throws Exception;
     public native String[] listTables(long connectionPtr) throws Exception;
     public native ODBCField[] listColumns(long connectionPtr, String tableName) throws Exception;
