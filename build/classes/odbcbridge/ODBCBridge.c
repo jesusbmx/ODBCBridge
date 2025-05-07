@@ -296,33 +296,91 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchArray(
 ) {
     QueryState *queryState = (QueryState *)(intptr_t)queryPtr;
 
-    SQLRETURN ret;
-    SQLSMALLINT columns;
-    SQLNumResultCols(queryState->hStmt, &columns);
-
-    SQLCHAR buffer[256];
-    SQLLEN indicator;
-    jobjectArray row = (*env)->NewObjectArray(env, columns, (*env)->FindClass(env, "java/lang/String"), NULL);
-
-    ret = SQLFetch(queryState->hStmt);
-    if (ret == SQL_NO_DATA) {
+    SQLSMALLINT columnCount;
+    if (SQLNumResultCols(queryState->hStmt, &columnCount) != SQL_SUCCESS) {
         return NULL;
     }
 
-    check_error(env, ret, SQL_HANDLE_STMT, queryState->hStmt, "Failed to fetch data");
+    jobjectArray rowArray = (*env)->NewObjectArray(env, columnCount, (*env)->FindClass(env, "java/lang/Object"), NULL);
+    if (rowArray == NULL) return NULL;
 
-    for (int j = 0; j < columns; j++) {
-        ret = SQLGetData(queryState->hStmt, j + 1, SQL_C_CHAR, buffer, sizeof(buffer), &indicator);
-        check_error(env, ret, SQL_HANDLE_STMT, queryState->hStmt, "Failed to get data");
+    SQLCHAR buffer[256];
+    SQLLEN indicator;
+    SQLSMALLINT dataType;
 
-        if (indicator == SQL_NULL_DATA) {
-            (*env)->SetObjectArrayElement(env, row, j, NULL);
-        } else {
-            (*env)->SetObjectArrayElement(env, row, j, (*env)->NewStringUTF(env, (char *)buffer));
-        }
+    SQLRETURN ret = SQLFetch(queryState->hStmt);
+
+    if (ret == SQL_NO_DATA) {
+        return NULL;
+    } else if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+        return NULL;
     }
 
-    return row;
+    for (int i = 1; i <= columnCount; i++) {
+        SQLDescribeCol(queryState->hStmt, i, NULL, 0, NULL, &dataType, NULL, NULL, NULL);
+
+        jobject value = NULL;
+
+        if (SQLGetData(queryState->hStmt, i, SQL_C_DEFAULT, buffer, sizeof(buffer), &indicator) != SQL_SUCCESS) {
+            continue;
+        }
+
+        if (indicator == SQL_NULL_DATA) {
+            value = NULL;
+        } else {
+            switch (dataType) {
+                case SQL_INTEGER:
+                case SQL_SMALLINT:
+                case SQL_TINYINT:
+                case SQL_BIT: {
+                    int intValue = atoi((char *)buffer);
+                    jclass integerClass = (*env)->FindClass(env, "java/lang/Integer");
+                    jmethodID intConstructor = (*env)->GetMethodID(env, integerClass, "<init>", "(I)V");
+                    value = (*env)->NewObject(env, integerClass, intConstructor, intValue);
+                    break;
+                }
+                case SQL_FLOAT: {
+                    float floatValue = atof((char *)buffer);
+                    jclass floatClass = (*env)->FindClass(env, "java/lang/Float");
+                    jmethodID floatConstructor = (*env)->GetMethodID(env, floatClass, "<init>", "(F)V");
+                    value = (*env)->NewObject(env, floatClass, floatConstructor, floatValue);
+                    break;
+                }
+                case SQL_DOUBLE:
+                case SQL_REAL: {
+                    double doubleValue = atof((char *)buffer);
+                    jclass doubleClass = (*env)->FindClass(env, "java/lang/Double");
+                    jmethodID doubleConstructor = (*env)->GetMethodID(env, doubleClass, "<init>", "(D)V");
+                    value = (*env)->NewObject(env, doubleClass, doubleConstructor, doubleValue);
+                    break;
+                }
+                case SQL_BINARY:
+                case SQL_VARBINARY:
+                case SQL_LONGVARBINARY: {
+                    SQLLEN blobLength = 0;
+                    SQLGetData(queryState->hStmt, i, SQL_C_BINARY, NULL, 0, &blobLength);
+
+                    if (blobLength > 0) {
+                        jbyteArray byteArray = (*env)->NewByteArray(env, blobLength);
+                        if (byteArray != NULL) {
+                            SQLGetData(queryState->hStmt, i, SQL_C_BINARY, buffer, blobLength, &indicator);
+                            (*env)->SetByteArrayRegion(env, byteArray, 0, blobLength, (jbyte *)buffer);
+                            value = byteArray;
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    value = (*env)->NewStringUTF(env, (char *)buffer);
+                    break;
+                }
+            }
+        }
+
+        (*env)->SetObjectArrayElement(env, rowArray, i - 1, value);
+    }
+
+    return rowArray;
 }
 
 // Función para obtener los nombres de las columnas
