@@ -62,7 +62,7 @@ public class Example {
             final String sql = "SELECT * FROM \"Product\" LIMIT 100";
             final long result = bridge.query(link, sql);
             try {
-                Map<String, String> row;
+                Map<String, Object> row;
                 while ((row = bridge.fetchAssoc(result)) != null) {
                     System.out.println(row);
                 }
