@@ -331,18 +331,32 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchFields(
 ) {
     QueryState *queryState = (QueryState *)(intptr_t)queryPtr;
 
-    SQLSMALLINT columns;
-    SQLNumResultCols(queryState->hStmt, &columns);
+    SQLSMALLINT columnCount;
+    SQLRETURN ret = SQLNumResultCols(queryState->hStmt, &columnCount);
+    check_error(env, ret, SQL_HANDLE_STMT, queryState->hStmt, "Failed to get column count");
 
-    jobjectArray columnNames = (*env)->NewObjectArray(env, columns, (*env)->FindClass(env, "java/lang/String"), NULL);
-    SQLCHAR columnName[256];
+    jclass clsODBCField = (*env)->FindClass(env, "odbcbridge/ODBCField");
+    jmethodID constructor = (*env)->GetMethodID(env, clsODBCField, "<init>", 
+                                                "(Ljava/lang/String;II)V");
 
-    for (int i = 0; i < columns; i++) {
-        SQLDescribeCol(queryState->hStmt, i + 1, columnName, sizeof(columnName), NULL, NULL, NULL, NULL, NULL);
-        (*env)->SetObjectArrayElement(env, columnNames, i, (*env)->NewStringUTF(env, (char *)columnName));
+    jobjectArray fieldArray = (*env)->NewObjectArray(env, columnCount, clsODBCField, NULL);
+
+    for (int i = 1; i <= columnCount; i++) {
+        SQLCHAR colName[256];
+        SQLSMALLINT dataType;
+        SQLULEN colSize;
+        SQLSMALLINT nullable;
+
+        ret = SQLDescribeCol(queryState->hStmt, i, colName, sizeof(colName), NULL, &dataType, &colSize, NULL, &nullable);
+        check_error(env, ret, SQL_HANDLE_STMT, queryState->hStmt, "Failed to describe column");
+
+        jstring jColName = (*env)->NewStringUTF(env, (char *)colName);
+        jobject odbcField = (*env)->NewObject(env, clsODBCField, constructor, jColName, dataType, colSize);
+
+        (*env)->SetObjectArrayElement(env, fieldArray, i - 1, odbcField);
     }
 
-    return columnNames;
+    return fieldArray;
 }
 
 // Función para cerrar la consulta y liberar recursos

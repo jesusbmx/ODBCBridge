@@ -91,7 +91,7 @@ public class ODBCBridge {
         System.loadLibrary(libName);
     }
     
-    private String[] _fields;
+    private ODBCField[] _fields;
     private long _queryPtr;
     
     private ODBCBridge() {
@@ -106,7 +106,7 @@ public class ODBCBridge {
     public native String[] listTables(long connectionPtr) throws Exception;
     public native ODBCField[] listColumns(long connectionPtr, String tableName) throws Exception;
     public native long query(long connectionPtr, String sql) throws Exception;
-    public native String[] fetchFields(long queryPtr) throws Exception;
+    public native ODBCField[] fetchFields(long queryPtr) throws Exception;
     public native String[] fetchArray(long queryPtr) throws Exception;
     public native void free(long queryPtr) throws Exception;
     
@@ -122,7 +122,7 @@ public class ODBCBridge {
         final int len = values.length;
         Map<String, String> row = new LinkedHashMap<>(len);
         for (int i = 0; i < len; i++) {
-            row.put(_fields[i], values[i]);
+            row.put(_fields[i].name, values[i]);
         }
         
         return row;
