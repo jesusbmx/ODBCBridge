@@ -319,94 +319,169 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchArray(
         SQLDescribeCol(queryState->hStmt, i, NULL, 0, NULL, &dataType, NULL, NULL, NULL);
         jobject value = NULL;
 
-        if (dataType == SQL_TIMESTAMP) {
-            TIMESTAMP_STRUCT tsStruct;
-            ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_TIMESTAMP, &tsStruct, sizeof(tsStruct), &indicator);
-            if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
-                jclass timestampClass = (*env)->FindClass(env, "java/sql/Timestamp");
-                jmethodID timestampConstructor = (*env)->GetMethodID(env, timestampClass, "<init>", "(J)V");
+        switch (dataType) {
 
-                struct tm tmData = {0};
-                tmData.tm_year = tsStruct.year - 1900;
-                tmData.tm_mon = tsStruct.month - 1;
-                tmData.tm_mday = tsStruct.day;
-                tmData.tm_hour = tsStruct.hour;
-                tmData.tm_min = tsStruct.minute;
-                tmData.tm_sec = tsStruct.second;
-
-                time_t timeInSeconds = mktime(&tmData);
-                long timeInMillis = (timeInSeconds * 1000) + (tsStruct.fraction / 1000000);
-                value = (*env)->NewObject(env, timestampClass, timestampConstructor, timeInMillis);
+            // Integer Types
+            case SQL_INTEGER:
+            case SQL_SMALLINT:
+            case SQL_TINYINT: {
+                SQLINTEGER intValue;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_SLONG, &intValue, sizeof(intValue), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Integer"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Integer"), "<init>", "(I)V"), intValue);
+                }
+                break;
             }
-        } 
-        else if (dataType == SQL_DATE) {
-            DATE_STRUCT dateStruct;
-            ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_DATE, &dateStruct, sizeof(dateStruct), &indicator);
-            if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
-                jclass dateClass = (*env)->FindClass(env, "java/sql/Date");
-                jmethodID dateConstructor = (*env)->GetMethodID(env, dateClass, "<init>", "(J)V");
 
-                struct tm tmData = {0};
-                tmData.tm_year = dateStruct.year - 1900;
-                tmData.tm_mon = dateStruct.month - 1;
-                tmData.tm_mday = dateStruct.day;
-
-                time_t timeInSeconds = mktime(&tmData);
-                long timeInMillis = timeInSeconds * 1000;
-                value = (*env)->NewObject(env, dateClass, dateConstructor, timeInMillis);
+            case SQL_BIGINT: {
+                SQLBIGINT bigIntValue;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_SBIGINT, &bigIntValue, sizeof(bigIntValue), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Long"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Long"), "<init>", "(J)V"), bigIntValue);
+                }
+                break;
             }
-        }
-        else if (dataType == SQL_TIME) {
-            TIME_STRUCT timeStruct;
-            ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_TIME, &timeStruct, sizeof(timeStruct), &indicator);
-            if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
-                jclass timeClass = (*env)->FindClass(env, "java/sql/Time");
-                jmethodID timeConstructor = (*env)->GetMethodID(env, timeClass, "<init>", "(J)V");
 
-                long timeInMillis = (timeStruct.hour * 3600 + timeStruct.minute * 60 + timeStruct.second) * 1000;
-                value = (*env)->NewObject(env, timeClass, timeConstructor, timeInMillis);
+            // Floating Point Types
+            case SQL_REAL:
+            case SQL_FLOAT: {
+                SQLREAL floatValue;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_FLOAT, &floatValue, sizeof(floatValue), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Float"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Float"), "<init>", "(F)V"), floatValue);
+                }
+                break;
             }
-        }
-        else if (dataType == SQL_BINARY || dataType == SQL_VARBINARY || dataType == SQL_LONGVARBINARY) {
-            SQLLEN blobLength = 0;
-            SQLGetData(queryState->hStmt, i, SQL_C_BINARY, NULL, 0, &blobLength);
 
-            if (blobLength > 0) {
-                jbyteArray byteArray = (*env)->NewByteArray(env, blobLength);
-                if (byteArray != NULL) {
-                    char *buffer = (char *)malloc(blobLength);
-                    if (buffer != NULL) {
-                        SQLGetData(queryState->hStmt, i, SQL_C_BINARY, buffer, blobLength, &indicator);
-                        (*env)->SetByteArrayRegion(env, byteArray, 0, blobLength, (jbyte *)buffer);
+            case SQL_DOUBLE: {
+                SQLDOUBLE doubleValue;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_DOUBLE, &doubleValue, sizeof(doubleValue), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Double"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Double"), "<init>", "(D)V"), doubleValue);
+                }
+                break;
+            }
+
+            // Decimal and Numeric Types
+            case SQL_NUMERIC:
+            case SQL_DECIMAL: {
+                SQLCHAR buffer[256];
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_CHAR, buffer, sizeof(buffer), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    jclass bigDecimalClass = (*env)->FindClass(env, "java/math/BigDecimal");
+                    jmethodID constructor = (*env)->GetMethodID(env, bigDecimalClass, "<init>", "(Ljava/lang/String;)V");
+                    jstring valueStr = (*env)->NewStringUTF(env, (char *)buffer);
+                    value = (*env)->NewObject(env, bigDecimalClass, constructor, valueStr);
+                }
+                break;
+            }
+
+            // Binary Data Types
+            case SQL_BINARY:
+            case SQL_VARBINARY:
+            case SQL_LONGVARBINARY: {
+                SQLLEN length = 0;
+                SQLGetData(queryState->hStmt, i, SQL_C_BINARY, NULL, 0, &length);
+
+                if (length > 0) {
+                    jbyteArray byteArray = (*env)->NewByteArray(env, length);
+                    if (byteArray != NULL) {
+                        char *buffer = (char *)malloc(length);
+                        SQLGetData(queryState->hStmt, i, SQL_C_BINARY, buffer, length, &indicator);
+                        (*env)->SetByteArrayRegion(env, byteArray, 0, length, (jbyte *)buffer);
                         free(buffer);
                         value = byteArray;
                     }
                 }
+                break;
             }
-        }
-        else {
-            SQLCHAR buffer[256];
-            ret = SQLGetData(queryState->hStmt, i, SQL_C_CHAR, buffer, sizeof(buffer), &indicator);
 
-            if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
-                switch (dataType) {
-                    case SQL_INTEGER:
-                    case SQL_SMALLINT:
-                    case SQL_TINYINT:
-                        value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Integer"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Integer"), "<init>", "(I)V"), atoi((char *)buffer));
-                        break;
-                    case SQL_FLOAT:
-                        value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Float"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Float"), "<init>", "(F)V"), atof((char *)buffer));
-                        break;
-                    case SQL_DOUBLE:
-                    case SQL_REAL:
-                        value = (*env)->NewObject(env, (*env)->FindClass(env, "java/lang/Double"), (*env)->GetMethodID(env, (*env)->FindClass(env, "java/lang/Double"), "<init>", "(D)V"), atof((char *)buffer));
-                        break;
-                    default:
-                        value = (*env)->NewStringUTF(env, (char *)buffer);
-                        break;
+            // String Types
+            case SQL_CHAR:
+            case SQL_VARCHAR:
+            case SQL_LONGVARCHAR:
+            case SQL_WCHAR:
+            case SQL_WVARCHAR:
+            case SQL_WLONGVARCHAR: {
+                SQLCHAR buffer[256];
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_CHAR, buffer, sizeof(buffer), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    value = (*env)->NewStringUTF(env, (char *)buffer);
                 }
+                break;
             }
+
+            // Date/Time Types
+            case SQL_DATE:
+            case SQL_TYPE_DATE: {
+                DATE_STRUCT dateStruct;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_DATE, &dateStruct, sizeof(dateStruct), &indicator);
+
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    jclass dateClass = (*env)->FindClass(env, "java/sql/Date");
+                    jmethodID dateConstructor = (*env)->GetMethodID(env, dateClass, "<init>", "(J)V");
+
+                    // Crear el `java.sql.Date` utilizando `java.util.Calendar`
+                    struct tm tmDate = { 0 };
+                    tmDate.tm_year = dateStruct.year - 1900;
+                    tmDate.tm_mon = dateStruct.month - 1;
+                    tmDate.tm_mday = dateStruct.day;
+
+                    time_t timeInSeconds = mktime(&tmDate);
+                    jlong timeInMillis = (jlong)timeInSeconds * 1000;
+
+                    value = (*env)->NewObject(env, dateClass, dateConstructor, timeInMillis);
+                }
+                break;
+            }
+
+            case SQL_TIME:
+            case SQL_TYPE_TIME: {
+                TIME_STRUCT timeStruct;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_TIME, &timeStruct, sizeof(timeStruct), &indicator);
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    jclass timeClass = (*env)->FindClass(env, "java/sql/Time");
+                    jmethodID timeConstructor = (*env)->GetMethodID(env, timeClass, "<init>", "(J)V");
+
+                    long timeInMillis = (timeStruct.hour * 3600 + timeStruct.minute * 60 + timeStruct.second) * 1000;
+                    value = (*env)->NewObject(env, timeClass, timeConstructor, timeInMillis);
+                }
+                break;
+            }
+
+            case SQL_TIMESTAMP:
+            case SQL_TYPE_TIMESTAMP: {
+                TIMESTAMP_STRUCT timestampStruct;
+                ret = SQLGetData(queryState->hStmt, i, SQL_C_TYPE_TIMESTAMP, &timestampStruct, sizeof(timestampStruct), &indicator);
+
+                if (ret == SQL_SUCCESS && indicator != SQL_NULL_DATA) {
+                    jclass timestampClass = (*env)->FindClass(env, "java/sql/Timestamp");
+                    jmethodID timestampConstructor = (*env)->GetMethodID(env, timestampClass, "<init>", "(J)V");
+
+                    struct tm tmTimestamp = { 0 };
+                    tmTimestamp.tm_year = timestampStruct.year - 1900;
+                    tmTimestamp.tm_mon = timestampStruct.month - 1;
+                    tmTimestamp.tm_mday = timestampStruct.day;
+                    tmTimestamp.tm_hour = timestampStruct.hour;
+                    tmTimestamp.tm_min = timestampStruct.minute;
+                    tmTimestamp.tm_sec = timestampStruct.second;
+
+                    time_t timeInSeconds = mktime(&tmTimestamp);
+                    jlong timeInMillis = ((jlong)timeInSeconds * 1000) + (timestampStruct.fraction / 1000000);
+
+                    value = (*env)->NewObject(env, timestampClass, timestampConstructor, timeInMillis);
+                }
+                break;
+            }
+
+            default:
+                // Default case para capturar cualquier tipo no manejado explícitamente
+                char typeInfo[128];
+                snprintf(typeInfo, sizeof(typeInfo), "Tipo no manejado: %d", dataType);
+
+                // Retornamos el tipo como un String
+                value = (*env)->NewStringUTF(env, typeInfo);
+                break;
         }
 
         (*env)->SetObjectArrayElement(env, rowArray, i - 1, value);
