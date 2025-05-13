@@ -14,46 +14,21 @@ import javax.swing.JOptionPane;
  * 
  * # Instrucciones de instalación y compilación
  * 
- * 1. Instalar MSYS2
- *    # Abre una terminal de MSYS2 y actualiza los paquetes existentes.
- *    - pacman -Syu
+ * 1.  Visual Studio 2019 Developer Command Prompt v16.11.39
  * 
- *    # Actualizar el resto de los paquetes:
- *    - pacman -Su
+ * 2. Compilar DLL para 64 bits en terminal Visual Studio 2019 Developer Command Prompt:
+ *    # Abre la terminal:
+ *    - "C:\Program Files\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat"
  * 
- * 2. Instalar MinGW de 32 bits y 64:
- *    - pacman -S mingw-w64-i686-toolchain
- *    - pacman -S mingw-w64-x86_64-toolchain
+ *    # Genera DLL 64:
+ *    - cl /I "%JAVA_HOME%\include" /I "%JAVA_HOME%\include\win32" /LD /Fe:odbc_bridge_win64.dll src/odbcbridge/ODBCBridge.c odbc32.lib odbccp32.lib
  * 
- * [No funciona no se compila bien con 32]
- * 3. Compilar DLL para 32 bits en terminal MSYS2 MinGW32:
- *    # Abre la terminal de CMD y selecciona el entorno de MinGW de 32 bits:
- *    - C:\msys64\msys2_shell.cmd -mingw32
+ * 3. Compilar DLL para 32 bits en terminal Visual Studio 2019 Developer Command Prompt:
+ *    # Abre la terminal:
+ *    - "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat" -arch=x86
  * 
- *    - gcc -shared -o odbc_bridge_win32.dll -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/win32" src/odbcbridge/ODBCBridge.c -lodbc32 -m32
- * 
- * 4. Compilar DLL para 64 bits en terminal MSYS2 MinGW64:
- *    # Abre la terminal de CMD y selecciona el entorno de MinGW de 64 bits:
- *    - C:\msys64\msys2_shell.cmd -mingw64
- * 
- *    - gcc -shared -o odbc_bridge_win64.dll -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/win32" src/odbcbridge/ODBCBridge.c -lodbc32 -m64
- * 
- * 5. Verificar arquitectura:
- *    - dumpbin /headers odbc_bridge_win32.dll | findstr machine
- * 
- * 6. Verificar dependencias:
- *    - dumpbin /dependents odbc_bridge_win32.dll
- * 
- * 7. Verificar metodos que se exportan:
- *    - dumpbin /exports odbc_bridge_win32.dll
- * 
- * Los pasos anteriores asumen que tu archivo de implementación nativa se llama `odbc_bridge.c`.
- * 
- * [Funciona mejor para 32 bits]
- * # Instrucciones con Visual Studio 2019 Developer Command Prompt v16.11.39:
- * - cl /I "%JAVA_HOME%\include" /I "%JAVA_HOME%\include\win32" /LD /Fe:odbc_bridge_win32.dll src/odbcbridge/ODBCBridge.c odbc32.lib odbccp32.lib
- * - cl /I "%JAVA_HOME%\include" /I "%JAVA_HOME%\include\win32" /LD /Fe:odbc_bridge_win64.dll src/odbcbridge/ODBCBridge.c odbc32.lib odbccp32.lib
- * 
+ *    # Genera DLL 32:
+ *    - cl /I "%JAVA_HOME%\include" /I "%JAVA_HOME%\include\win32" /LD /Fe:odbc_bridge_win32.dll src/odbcbridge/ODBCBridge.c odbc32.lib odbccp32.lib
  */
 public class ODBCBridge {
     
