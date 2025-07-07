@@ -18,6 +18,16 @@ JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_connect
 
 /*
  * Class:     odbcbridge_ODBCBridge
+ * Method:    connectWithString
+ * Signature: (Ljava/lang/String;)J
+ */
+JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_connectWithString(
+    JNIEnv *env, jobject obj,
+    jstring jconnStr
+);
+
+/*
+ * Class:     odbcbridge_ODBCBridge
  * Method:    close
  * Signature: (J)V
  */

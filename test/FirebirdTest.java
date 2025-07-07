@@ -10,7 +10,7 @@ public class FirebirdTest {
     public static void main(String[] args) throws Exception {
         final ODBCBridge bridge = ODBCBridge.INSTANCE;
               
-        final String dsn = "Firebird_INSUMA";
+        final String dsn = "BODEGA CD";
         final long link = bridge.connect(dsn);
         try {
 

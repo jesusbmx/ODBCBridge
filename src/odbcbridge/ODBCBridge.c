@@ -95,6 +95,51 @@ JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_connect(
     return (jlong)(intptr_t)connectionState;
 }
 
+/*
+ * Class:     odbcbridge_ODBCBridge
+ * Method:    connectWithString
+ * Signature: (Ljava/lang/String;)J
+ */
+JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_connectWithString(
+    JNIEnv *env, jobject obj,
+    jstring jconnStr
+) {
+    const char *connStr = (*env)->GetStringUTFChars(env, jconnStr, 0);
+
+    // 1) Setup ODBC environment
+    SQLHENV hEnv = setup_environment(env);
+
+    // 2) Alloc handle de conexión y timeout
+    SQLHDBC hDbc = SQL_NULL_HDBC;
+    SQLRETURN ret = SQLAllocHandle(SQL_HANDLE_DBC, hEnv, &hDbc);
+    check_error(env, ret, SQL_HANDLE_ENV, hEnv, "Failed to alloc DBC handle");
+
+    // timeout de login opcional
+    SQLSetConnectAttr(hDbc, SQL_ATTR_LOGIN_TIMEOUT, (SQLPOINTER)5, 0);
+
+    // 3) Conectar usando cadena completa
+    SQLCHAR outConnStr[1024];
+    SQLSMALLINT outConnStrLen = 0;
+    ret = SQLDriverConnect(
+        hDbc,
+        NULL,
+        (SQLCHAR*)connStr, SQL_NTS,
+        outConnStr, sizeof(outConnStr), &outConnStrLen,
+        SQL_DRIVER_NOPROMPT
+    );
+    check_error(env, ret, SQL_HANDLE_DBC, hDbc, "Failed SQLDriverConnect");
+
+    (*env)->ReleaseStringUTFChars(env, jconnStr, connStr);
+
+    // 4) Guardar estado
+    ConnectionState *state = (ConnectionState*)malloc(sizeof(ConnectionState));
+    state->hEnv = hEnv;
+    state->hDbc = hDbc;
+
+    // 5) Devolver puntero
+    return (jlong)(intptr_t)state;
+}
+
 // Función para cerrar la conexión y liberar recursos
 JNIEXPORT void JNICALL Java_odbcbridge_ODBCBridge_close(
     JNIEnv *env, jobject obj, jlong connectionPtr
