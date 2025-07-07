@@ -72,7 +72,9 @@ SQLHSTMT init_statement(JNIEnv *env, SQLHDBC hDbc) {
     check_error(env, ret, SQL_HANDLE_STMT, hStmt, "Failed to allocate ODBC statement handle");
 
     // Set query timeout
-    SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)5, 0); // 5 seconds timeout
+    //SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)5, 0); // 5 seconds timeout
+    // Sin límite de tiempo en la ejecución de la consulta
+    SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)0, 0);
 
     return hStmt;
 }

@@ -77,16 +77,7 @@ public class ODBCBridge {
     private ODBCBridge() {
         
     }
-
-    /**
-     * Conecta a una fuente de datos ODBC usando solo el nombre del DSN.
-     * 
-     * @param dsn Nombre de la fuente de datos ODBC configurada en el sistema
-     * @return Puntero a la conexión (handle)
-     * @throws Exception Si la conexión falla
-     */
-    public native long connect(String dsn) throws Exception;
-        
+    
     /**
      * Conecta usando una cadena de conexión ODBC completa.
      * 
@@ -100,6 +91,19 @@ public class ODBCBridge {
      * @throws Exception Si la conexión falla
      */
     public native long connectWithString(String connectionString) throws Exception;
+
+    /**
+     * Conecta a una fuente de datos ODBC usando solo el nombre del DSN.
+     * 
+     * @param dsn Nombre de la fuente de datos ODBC configurada en el sistema
+     * @return Puntero a la conexión (handle)
+     * @throws Exception Si la conexión falla
+     */
+    public native long connect(String dsn) throws Exception;
+
+    public long connect(ODBCDataSource dataSource) throws Exception {
+        return connectWithString(dataSource.buildConnectionString());
+    }
     
     /**
      * Conecta a una fuente de datos ODBC con usuario y contraseña.
@@ -113,11 +117,12 @@ public class ODBCBridge {
      * @throws Exception Si la conexión falla
      */
     public long connect(String dsn, String uid, String pwd) throws Exception {
-        String connStr = "DSN=" + dsn
-                       + (uid != null ? ";UID="  + uid : "")
-                       + (pwd != null ? ";PWD="  + pwd : "")
+        final ODBCDataSource dataSource = new ODBCDataSource()
+                .setDsn(dsn)
+                .setUser(uid)
+                .setPassword(pwd)
         ;
-        return connectWithString(connStr);
+        return connect(dataSource);
     }
     
     /**
