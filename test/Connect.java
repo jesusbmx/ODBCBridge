@@ -1,28 +1,22 @@
 
-import odbcbridge.ODBCBridge;
 import odbcbridge.ODBCDataSource;
-
+import odbcbridge.OdbcConnection;
 
 public class Connect {
     
     public static void main(String[] args) throws Exception {
         ODBCDataSource dataSource = new ODBCDataSource()
-                .setDsn("BODEGA CD")
-                .setUser("sysdba")
-                .setPassword("masterkey");
+                .setDsn("Postgre32");
         
         System.out.println(dataSource.buildConnectionString());
         
-        ODBCBridge bridge = ODBCBridge.INSTANCE;
-        long link = bridge.connect(dataSource);
-        try {
+        try (OdbcConnection connection = dataSource.getConnection()) {
             System.out.println("-- Tables --");
-            final String[] tables = bridge.listTables(link);
+            final String[] tables = connection.listTables();
             for (String table : tables) {
                 System.out.println(table);
             }
-        } finally {
-            bridge.close(link);
         }
+      
     }
 }
