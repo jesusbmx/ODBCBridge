@@ -661,14 +661,7 @@ public class ODBCDataSource {
      * @throws Exception Si la conexión falla
      */
     public OdbcConnection getConnection() throws Exception {
-        OdbcConnection connection = null;
-        try {
-            connection = new OdbcConnection(buildConnectionString());
-            return connection;
-        } catch (Exception e) {
-            if (connection != null) connection.close();
-            throw e;
-        }
+        return OdbcConnection.connectWithString(buildConnectionString());
     }
     
     // ==================== MÉTODOS DE UTILIDAD ====================
