@@ -73,8 +73,9 @@ SQLHSTMT init_statement(JNIEnv *env, SQLHDBC hDbc) {
 
     // Set query timeout
     //SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)5, 0); // 5 seconds timeout
+    
     // Sin límite de tiempo en la ejecución de la consulta
-    SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)0, 0);
+    //SQLSetStmtAttr(hStmt, SQL_ATTR_QUERY_TIMEOUT, (SQLPOINTER)0, 0);
 
     return hStmt;
 }
@@ -377,25 +378,59 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchArray(
     JNIEnv *env, jobject obj, jlong queryPtr
 ) {
     QueryState *queryState = (QueryState *)(intptr_t)queryPtr;
-
+    
     SQLSMALLINT columnCount;
-    if (SQLNumResultCols(queryState->hStmt, &columnCount) != SQL_SUCCESS) {
+    SQLSMALLINT dataType;
+    SQLLEN     indicator;
+
+    // 1) Número de columnas
+    SQLRETURN rc = SQLNumResultCols(queryState->hStmt, &columnCount);
+    if (!SQL_SUCCEEDED(rc)) {
+        // Lanza SQLException
+        jclass exClass = (*env)->FindClass(env, "java/sql/SQLException");
+        (*env)->ThrowNew(env, exClass,
+            "Error en SQLNumResultCols al obtener número de columnas");
         return NULL;
     }
 
-    jobjectArray rowArray = (*env)->NewObjectArray(env, columnCount, (*env)->FindClass(env, "java/lang/Object"), NULL);
+    // 2) Fetch
+    SQLRETURN ret = SQLFetch(queryState->hStmt);
+    if (ret == SQL_NO_DATA) {
+        // no hay más filas: retorna NULL (fin de cursor)
+        return NULL;
+    }
+    if (!SQL_SUCCEEDED(ret)) {
+        // Extrae diagnóstico ODBC
+        SQLCHAR sqlState[6], msg[SQL_MAX_MESSAGE_LENGTH];
+        SQLINTEGER nativeErr;
+        SQLSMALLINT textLen;
+        SQLGetDiagRec(
+            SQL_HANDLE_STMT,
+            queryState->hStmt,
+            1,
+            sqlState,
+            &nativeErr,
+            msg,
+            sizeof(msg),
+            &textLen
+        );
+        // Prepara mensaje: "[SQLState] Mensaje"
+        char buf[1024];
+        snprintf(buf, sizeof(buf), "SQLFetch fallo [%s]: %.*s",
+                 sqlState, textLen, msg);
+
+        // Lanza SQLException con el mensaje ODBC
+        jclass exClass = (*env)->FindClass(env, "java/sql/SQLException");
+        (*env)->ThrowNew(env, exClass, buf);
+        return NULL;
+    }
+
+    // 3) Crea el array Java de Objects
+    jclass objClass = (*env)->FindClass(env, "java/lang/Object");
+    jobjectArray rowArray = (*env)->NewObjectArray(env, columnCount, objClass, NULL);
     if (rowArray == NULL) return NULL;
 
-    SQLLEN indicator;
-    SQLSMALLINT dataType;
-    SQLRETURN ret = SQLFetch(queryState->hStmt);
-
-    if (ret == SQL_NO_DATA) {
-        return NULL;
-    } else if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-        return NULL;
-    }
-
+    // 4) Recolecta cada columna 
     for (int i = 1; i <= columnCount; i++) {
         SQLDescribeCol(queryState->hStmt, i, NULL, 0, NULL, &dataType, NULL, NULL, NULL);
         jobject value = NULL;

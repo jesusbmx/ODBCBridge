@@ -660,8 +660,8 @@ public class ODBCDataSource {
      * @return Puntero a la conexión establecida
      * @throws Exception Si la conexión falla
      */
-    public OdbcConnection getConnection() throws Exception {
-        return OdbcConnection.connectWithString(buildConnectionString());
+    public ODBCConnection getConnection() throws Exception {
+        return ODBCConnection.connectWithString(buildConnectionString());
     }
     
     /** Lista todos los DSNs disponibles. */

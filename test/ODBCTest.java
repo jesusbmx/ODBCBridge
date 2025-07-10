@@ -2,8 +2,8 @@
 import odbcbridge.ODBCDataSource;
 import odbcbridge.ODBCField;
 import odbcbridge.ODBCInfo;
-import odbcbridge.OdbcConnection;
-import odbcbridge.OdbcResultSet;
+import odbcbridge.ODBCConnection;
+import odbcbridge.ODBCResultSet;
 
 public class ODBCTest {
     
@@ -17,7 +17,7 @@ public class ODBCTest {
         final ODBCDataSource dataSource = new ODBCDataSource()
                 .setDsn("Postgre32");
         
-        try (OdbcConnection connection = dataSource.getConnection()) {
+        try (ODBCConnection connection = dataSource.getConnection()) {
             System.out.println("-- Info --");
             ODBCInfo info = connection.getDatabaseInfo();
             System.out.println(info);
@@ -28,16 +28,18 @@ public class ODBCTest {
                 System.out.println("Table: " + table);
             }
             
-            System.out.println("-- Fields --");
-            ODBCField[] columns = connection.listColumns("Product");
-            for (ODBCField column : columns) {
-                System.out.println("Column: " + column);
-            }
-            
             System.out.println("-- Query --");
-            final String sql = "SELECT * FROM \"Product\" LIMIT 100";
-            try (OdbcResultSet resultSet = connection.query(sql)) {
-
+            final String sql = "SELECT * FROM \"Product\" LIMIT 1";
+            System.out.println(sql);
+            try (ODBCResultSet resultSet = connection.query(sql)) {
+                
+                ODBCField[] fields = resultSet.getFields();
+                for (int col = 0; col < fields.length; col++) {
+                    if (col > 0) System.out.print(",");
+                    System.out.print(fields[col].name);
+                }
+                System.out.println("");
+                    
                 while (resultSet.next()) {
                     for (int col = 1; col <= resultSet.getColumnCount(); col++) {
                         if (col > 1) System.out.print(",");

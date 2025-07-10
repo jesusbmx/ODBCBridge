@@ -162,7 +162,7 @@ public class ODBCBridge {
      */
     public native ODBCField[] listColumns(long connectionPtr, String tableName) throws Exception;
     
-     /** 
+    /** 
      * Ejecuta una consulta SELECT y devuelve un puntero a QueryState. 
      * @param connectionPtr puntero a la conexión JNI
      * @param sql           sentencia SQL
@@ -174,7 +174,7 @@ public class ODBCBridge {
     public long query(long connectionPtr, String sql) throws Exception {
         return query(connectionPtr, sql, null);
     }
-    
+
     /**
      * Ejecuta una sentencia DML/DDL (INSERT, UPDATE, DELETE, CREATE, etc.)
      * y devuelve el número de filas afectadas.

@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Mini-ResultSet para iterar filas con try-with-resources.
  */
-public class OdbcResultSet implements AutoCloseable {
+public class ODBCResultSet implements AutoCloseable {
     private final ODBCBridge nativeBridge;
     private final long ptr;
     private final ODBCField[] fields;
@@ -17,7 +17,7 @@ public class OdbcResultSet implements AutoCloseable {
     /**
      * Constructor: precarga metadata y mapea nombres a índices.
      */
-    public OdbcResultSet(ODBCBridge nativeBridge, long ptr) throws Exception {
+    public ODBCResultSet(ODBCBridge nativeBridge, long ptr) throws Exception {
         this.nativeBridge = nativeBridge;
         this.ptr = ptr;
         this.fields = nativeBridge.fetchFields(ptr);
