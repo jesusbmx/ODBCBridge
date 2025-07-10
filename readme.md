@@ -26,55 +26,44 @@ Para integrar esta librería en tu proyecto, debes importar los siguientes archi
 ## Uso básico
 
 ```java
-import odbcbridge.ODBCBridge;
-import java.util.Map;
-
-public class Example {
-    public static void main(String[] args) throws Exception {
-        final ODBCBridge bridge = ODBCBridge.INSTANCE;
-
-        System.out.println("-- Databases --");
-        String[] databases = bridge.listDatabases();
-        for (String database : databases) {
-            System.out.println("Database: " + database);
-        }
-
-        final String dsn = "PostgreSQL30";
-        final long link = bridge.connect(dsn);
-        try {
-            System.out.println("-- Info --");
-            ODBCInfo info = bridge.getDatabaseInfo(link);
-            System.out.println(info);
-
-            System.out.println("-- Tables --");
-            String[] tables = bridge.listTables(link);
-            for (String table : tables) {
-                System.out.println("Table: " + table);
-            }
-
-            System.out.println("-- Fields --");
-            ODBCField[] columns = bridge.listColumns(link, "Product");
-            for (ODBCField column : columns) {
-                System.out.println("Column: " + column);
-            }
-
-            System.out.println("-- Query --");
-            final String sql = "SELECT * FROM \"Product\" LIMIT 100";
-            final long result = bridge.query(link, sql);
-            try {
-                Map<String, Object> row;
-                while ((row = bridge.fetchAssoc(result)) != null) {
-                    System.out.println(row);
-                }
-            } finally {
-                bridge.free(result);
-            }
-
-        } finally {
-            bridge.close(link);
-        }
-    }
+System.out.println("-- Databases --");
+String[] databases = OdbcConnection.listDatabases();
+for (String database : databases) {
+    System.out.println("Database: " + database);
 }
+
+final ODBCDataSource dataSource = new ODBCDataSource()
+        .setDsn("Postgre32");
+
+try (OdbcConnection connection = dataSource.getConnection()) {
+    System.out.println("-- Info --");
+    ODBCInfo info = connection.getDatabaseInfo();
+    System.out.println(info);
+
+    System.out.println("-- Tables --");
+    String[] tables = connection.listTables();
+    for (String table : tables) {
+        System.out.println("Table: " + table);
+    }
+
+    System.out.println("-- Fields --");
+    ODBCField[] columns = connection.listColumns("Product");
+    for (ODBCField column : columns) {
+        System.out.println("Column: " + column);
+    }
+
+    System.out.println("-- Query --");
+    final String sql = "SELECT * FROM \"Product\" LIMIT 100";
+    try (OdbcResultSet resultSet = connection.query(sql)) {
+
+        while (resultSet.next()) {
+            for (int col = 1; col <= resultSet.getColumnCount(); col++) {
+                if (col > 1) System.out.print(",");
+                System.out.print(resultSet.get(col));
+            }
+            System.out.println("");
+        }
+    } 
 ```
 
 ## Instalación
