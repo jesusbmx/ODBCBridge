@@ -1,10 +1,6 @@
 // ODBCBridge.java
 package odbcbridge;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import javax.swing.JOptionPane;
-
 /**
  * Clase ODBCBridge para establecer una interfaz Java con ODBC mediante JNI.
  * Esta clase proporciona métodos nativos para listar tablas y ejecutar consultas SQL en una fuente de datos ODBC.
@@ -60,8 +56,8 @@ public class ODBCBridge {
             }
         } catch (UnsatisfiedLinkError e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, 
-                    e.getMessage(), "", JOptionPane.ERROR_MESSAGE);
+            javax.swing.JOptionPane.showMessageDialog(null, 
+                    e.getMessage(), "", javax.swing.JOptionPane.ERROR_MESSAGE);
             throw new RuntimeException("Failed to load native library", e);
         }
     }
@@ -70,9 +66,6 @@ public class ODBCBridge {
         System.out.println("ODBCBridge.loadLibrary: " + libName);
         System.loadLibrary(libName);
     }
-    
-    private ODBCField[] _fields;
-    private long _queryPtr;
     
     private ODBCBridge() {
         
@@ -169,17 +162,37 @@ public class ODBCBridge {
      */
     public native ODBCField[] listColumns(long connectionPtr, String tableName) throws Exception;
     
-    /**
-     * Ejecuta una consulta SQL en la base de datos.
-     * 
-     * <p>Soporta consultas SELECT, INSERT, UPDATE, DELETE y procedimientos almacenados.</p>
-     * 
-     * @param connectionPtr Puntero a la conexión activa
-     * @param sql Sentencia SQL a ejecutar
-     * @return Puntero al resultado de la consulta (handle)
-     * @throws Exception Si ocurre un error al ejecutar la consulta
+     /** 
+     * Ejecuta una consulta SELECT y devuelve un puntero a QueryState. 
+     * @param connectionPtr puntero a la conexión JNI
+     * @param sql           sentencia SQL
+     * @param params        parámetros opcionales (Object[]), o null
      */
-    public native long query(long connectionPtr, String sql) throws Exception;
+    public native long query(long connectionPtr, String sql, Object[] params) throws Exception;
+
+    /** Sobrecarga para llamadas sin parámetros */
+    public long query(long connectionPtr, String sql) throws Exception {
+        return query(connectionPtr, sql, null);
+    }
+    
+    /**
+     * Ejecuta una sentencia DML/DDL (INSERT, UPDATE, DELETE, CREATE, etc.)
+     * y devuelve el número de filas afectadas.
+     *
+     * @param connectionPtr Puntero a la conexión JNI
+     * @param sql           Sentencia SQL a ejecutar
+     * @param params        Parámetros opcionales (en orden), o null si no hay
+     * @return número de filas afectadas, o 0 si no se puede determinar
+     * @throws Exception si ocurre algún error ODBC/JNI
+     */
+    public native int execute(long connectionPtr, String sql, Object[] params) throws Exception;
+
+    /**
+     * Sobrecarga sin parámetros.
+     */
+    public int execute(long connectionPtr, String sql) throws Exception {
+        return execute(connectionPtr, sql, null);
+    }
     
     /**
      * Obtiene los metadatos de las columnas del resultado de una consulta.
@@ -209,47 +222,4 @@ public class ODBCBridge {
      * @throws Exception Si ocurre un error al liberar los recursos
      */
     public native void free(long queryPtr) throws Exception;
-    
-    // ==================== MÉTODOS DE CONVENIENCIA ====================
-    
-    /**
-     * Obtiene la siguiente fila del resultado como un mapa asociativo.
-     * 
-     * <p>Método de conveniencia que combina fetchArray() y fetchFields()
-     * para devolver un Map con nombres de columna como claves.</p>
-     * 
-     * <p><strong>Ejemplo:</strong></p>
-     * <pre>
-     * {@code
-     * Map<String, Object> row = bridge.fetchAssoc(queryPtr);
-     * if (row != null) {
-     *     String nombre = (String) row.get("nombre");
-     *     Integer edad = (Integer) row.get("edad");
-     * }
-     * }
-     * </pre>
-     * 
-     * @param queryPtr Puntero al resultado de la consulta
-     * @return Map con nombres de columna como claves y valores de la fila,
-     *         o null si no hay más filas
-     * @throws Exception Si ocurre un error al obtener la fila
-     */
-    public Map<String, Object> fetchAssoc(long queryPtr) throws Exception {
-        Object[] values = fetchArray(queryPtr);
-        if (values == null) return null;
-        
-        // Cache de metadatos para mejorar performance
-        if (_fields == null || _queryPtr != queryPtr) {
-            _queryPtr = queryPtr;
-            _fields = fetchFields(queryPtr);
-        }
-        
-        final int len = values.length;
-        Map<String, Object> row = new LinkedHashMap<>(len);
-        for (int i = 0; i < len; i++) {
-            row.put(_fields[i].name, values[i]);
-        }
-        
-        return row;
-    }
 }

@@ -1,53 +1,51 @@
 
-import java.util.Map;
-import odbcbridge.ODBCBridge;
+import odbcbridge.ODBCDataSource;
 import odbcbridge.ODBCField;
 import odbcbridge.ODBCInfo;
+import odbcbridge.OdbcConnection;
+import odbcbridge.OdbcResultSet;
 
 public class ODBCTest {
     
     public static void main(String[] args) throws Exception {
-        final ODBCBridge bridge = ODBCBridge.INSTANCE;
-        
         System.out.println("-- Databases --");
-        String[] databases = bridge.listDatabases();
+        String[] databases = ODBCDataSource.listDatabases();
         for (String database : databases) {
             System.out.println("Database: " + database);
         }
         
-        final String dsn = "PostgreSQL30";
-        final long link = bridge.connect(dsn);
-        try {
+        final ODBCDataSource dataSource = new ODBCDataSource()
+                .setDsn("Postgre32");
+        
+        try (OdbcConnection connection = dataSource.getConnection()) {
             System.out.println("-- Info --");
-            ODBCInfo info = bridge.getDatabaseInfo(link);
+            ODBCInfo info = connection.getDatabaseInfo();
             System.out.println(info);
             
             System.out.println("-- Tables --");
-            String[] tables = bridge.listTables(link);
+            String[] tables = connection.listTables();
             for (String table : tables) {
                 System.out.println("Table: " + table);
             }
             
             System.out.println("-- Fields --");
-            ODBCField[] columns = bridge.listColumns(link, "Product");
+            ODBCField[] columns = connection.listColumns("Product");
             for (ODBCField column : columns) {
                 System.out.println("Column: " + column);
             }
             
             System.out.println("-- Query --");
             final String sql = "SELECT * FROM \"Product\" LIMIT 100";
-            final long result = bridge.query(link, sql);
-            try {
-                Map<String, Object> row;
-                while ((row = bridge.fetchAssoc(result)) != null) {
-                    System.out.println(row);
+            try (OdbcResultSet resultSet = connection.query(sql)) {
+
+                while (resultSet.next()) {
+                    for (int col = 1; col <= resultSet.getColumnCount(); col++) {
+                        if (col > 1) System.out.print(",");
+                        System.out.print(resultSet.get(col));
+                    }
+                    System.out.println("");
                 }
-            } finally {
-                bridge.free(result);
-            }
-            
-        } finally {
-            bridge.close(link);
-        }
+            } 
+        } 
     }
 }

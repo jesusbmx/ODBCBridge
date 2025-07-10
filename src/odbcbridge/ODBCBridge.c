@@ -318,25 +318,59 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_listColumns(
 }
 
 // Función para inicializar una consulta SQL
-JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_query(
-    JNIEnv *env, jobject obj, jlong connectionPtr, jstring jsql
-) {
+JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_query
+  (JNIEnv *env, jobject obj,
+   jlong connectionPtr,
+   jstring jsql,
+   jobjectArray paramsArr)
+{
     ConnectionState *connectionState = (ConnectionState *)(intptr_t)connectionPtr;
     const char *sql = (*env)->GetStringUTFChars(env, jsql, 0);
 
+    // 1) Inicializa el statement
     SQLHSTMT hStmt = init_statement(env, connectionState->hDbc);
+    if (hStmt == SQL_NULL_HSTMT) {
+        (*env)->ReleaseStringUTFChars(env, jsql, sql);
+        return 0;
+    }
 
+    // 2) Bind de parámetros (si los hay)
+    if (paramsArr != NULL) {
+        jsize count = (*env)->GetArrayLength(env, paramsArr);
+        for (SQLUSMALLINT i = 0; i < (SQLUSMALLINT)count; i++) {
+            jobject param = (*env)->GetObjectArrayElement(env, paramsArr, i);
+            if (param != NULL) {
+                // Por simplicidad, aquí tratamos todos como String
+                const char *s = (*env)->GetStringUTFChars(env, (jstring)param, NULL);
+                SQLBindParameter(
+                    hStmt,
+                    (SQLUSMALLINT)(i+1),
+                    SQL_PARAM_INPUT,
+                    SQL_C_CHAR,
+                    SQL_VARCHAR,
+                    0, 0,
+                    (SQLPOINTER)s,
+                    0,
+                    NULL
+                );
+                (*env)->ReleaseStringUTFChars(env, (jstring)param, s);
+            }
+        }
+    }
+
+    // 3) Ejecuta la consulta
     SQLRETURN ret = SQLExecDirect(hStmt, (SQLCHAR *)sql, SQL_NTS);
     check_error(env, ret, SQL_HANDLE_STMT, hStmt, "Failed to execute SQL query");
 
+    // 4) Prepara el estado de la query para devolverlo a Java
     QueryState *queryState = (QueryState *)malloc(sizeof(QueryState));
     queryState->hStmt = hStmt;
     queryState->connectionState = connectionState;
 
     (*env)->ReleaseStringUTFChars(env, jsql, sql);
-
     return (jlong)(intptr_t)queryState;
 }
+
 
 // Función para obtener datos de una fila de resultados
 JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchArray(
@@ -583,4 +617,55 @@ JNIEXPORT void JNICALL Java_odbcbridge_ODBCBridge_free(
         }
         free(queryState);
     }
+}
+
+JNIEXPORT jint JNICALL Java_odbcbridge_ODBCBridge_execute
+  (JNIEnv *env, jobject self, jlong connPtr, jstring sqlJ, jobjectArray paramsArr)
+{
+    SQLHDBC  hdbc    = (SQLHDBC) connPtr;
+    SQLHSTMT hstmt;
+    SQLRETURN ret;
+    SQLLEN   rowCount = 0;
+    const char *sql = (*env)->GetStringUTFChars(env, sqlJ, NULL);
+
+    // 1) Allocar handle de statement
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, hdbc, &hstmt);
+    if (!SQL_SUCCEEDED(ret)) goto cleanup;
+
+    // 2) (Opcional) Bind de parámetros si los hay
+    if (paramsArr != NULL) {
+        jsize n = (*env)->GetArrayLength(env, paramsArr);
+        for (SQLUSMALLINT i = 0; i < (SQLUSMALLINT)n; i++) {
+            jobject obj = (*env)->GetObjectArrayElement(env, paramsArr, i);
+            // Aquí puedes expandir para tipos específicos (String, Integer, etc.)
+            const char *s = (*env)->GetStringUTFChars(env, (jstring)obj, NULL);
+            SQLBindParameter(
+                hstmt, 
+                (SQLUSMALLINT)(i+1),
+                SQL_PARAM_INPUT, 
+                SQL_C_CHAR, 
+                SQL_VARCHAR, 
+                0, 0, 
+                (SQLPOINTER)s, 
+                0, 
+                NULL
+            );
+            (*env)->ReleaseStringUTFChars(env, (jstring)obj, s);
+        }
+    }
+
+    // 3) Ejecutar la sentencia
+    ret = SQLExecDirect(hstmt, (SQLCHAR*)sql, SQL_NTS);
+    if (!SQL_SUCCEEDED(ret)) goto free_stmt;
+
+    // 4) Obtener número de filas afectadas
+    SQLRowCount(hstmt, &rowCount);
+
+free_stmt:
+    SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
+cleanup:
+    (*env)->ReleaseStringUTFChars(env, sqlJ, sql);
+
+    // Si algo falló antes de rowCount, devolvemos 0
+    return (jint)(SQL_SUCCEEDED(ret) ? rowCount : 0);
 }

@@ -72,7 +72,7 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_listColumns
  * Signature: (JLjava/lang/String;)J
  */
 JNIEXPORT jlong JNICALL Java_odbcbridge_ODBCBridge_query
-  (JNIEnv *, jobject, jlong, jstring);
+  (JNIEnv *, jobject, jlong, jstring, jobjectArray paramsArr);
 
 /*
  * Class:     odbcbridge_ODBCBridge
@@ -97,6 +97,15 @@ JNIEXPORT jobjectArray JNICALL Java_odbcbridge_ODBCBridge_fetchArray
  */
 JNIEXPORT void JNICALL Java_odbcbridge_ODBCBridge_free
   (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     odbcbridge_ODBCBridge
+ * Method:    free
+ * Signature: (J)V
+ */
+JNIEXPORT jint JNICALL Java_odbcbridge_ODBCBridge_execute
+  (JNIEnv *env, jobject self, jlong connPtr, jstring sqlJ, jobjectArray paramsArr);
+
 
 #ifdef __cplusplus
 }
