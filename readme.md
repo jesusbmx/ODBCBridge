@@ -27,7 +27,7 @@ Para integrar esta librería en tu proyecto, debes importar los siguientes archi
 
 ```java
 System.out.println("-- Databases --");
-String[] databases = OdbcConnection.listDatabases();
+String[] databases = ODBCDataSource.listDatabases();
 for (String database : databases) {
     System.out.println("Database: " + database);
 }

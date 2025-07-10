@@ -9,7 +9,7 @@ public class ODBCTest2 {
     
     public static void main(String[] args) throws Exception {
         System.out.println("-- Databases --");
-        String[] databases = OdbcConnection.listDatabases();
+        String[] databases = ODBCDataSource.listDatabases();
         for (String database : databases) {
             System.out.println("Database: " + database);
         }

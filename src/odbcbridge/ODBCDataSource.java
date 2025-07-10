@@ -664,6 +664,11 @@ public class ODBCDataSource {
         return OdbcConnection.connectWithString(buildConnectionString());
     }
     
+    /** Lista todos los DSNs disponibles. */
+    public static String[] listDatabases() throws Exception {
+        return ODBCBridge.INSTANCE.listDatabases();
+    }
+    
     // ==================== MÉTODOS DE UTILIDAD ====================
     
     /**

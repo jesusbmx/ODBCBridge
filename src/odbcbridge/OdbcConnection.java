@@ -46,11 +46,6 @@ public class OdbcConnection implements AutoCloseable {
             throw e;
         }
     }
-    
-    /** Lista todos los DSNs disponibles. */
-    public static String[] listDatabases() throws Exception {
-        return nativeBridge.listDatabases();
-    }
   
     /** Lista tablas disponibles */
     public String[] listTables() throws Exception {
